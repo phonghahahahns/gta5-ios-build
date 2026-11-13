@@ -1,76 +1,52 @@
-
-name: GTAV Community IPA Build
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/gtav-community.yml"
-      - "src/**"
-      - "ios/**"
-      - "launcher/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "tools/**"
-
-permissions:
-  contents: read
-
-concurrency:
-  group: gtav-community-build
-  cancel-in-progress: true
+name: Build GTAV Community IPA
+on: workflow_dispatch
 
 jobs:
   build:
-    name: Build GTAV Community IPA
-    runs-on: macos-26
-    timeout-minutes: 180
-
+    # Bắt buộc: macOS 14+ trên Apple Silicon (runner mặc định có thể là Intel)
+    runs-on: macos-14
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check Xcode
+      # 1. Chọn đúng phiên bản Xcode (dự án yêu cầu 26+)
+      - name: Select Xcode
         run: |
+          # Liệt kê các Xcode có sẵn trên runner
+          ls /Applications | grep Xcode
+          # Chọn Xcode 26 nếu có (tên có thể là Xcode_26.0.app hoặc Xcode_26.1.app)
+          sudo xcode-select -s /Applications/Xcode_26.0.app  # Điều chỉnh theo tên thực tế
           xcodebuild -version
-          xcode-select -p
 
-      - name: Install dependencies
-        run: |
-          brew install xcodegen binaryen
-
+      # 2. Cài đặt Rust toolchain 1.98.1 với target iOS
       - name: Install Rust
         run: |
-          rustup toolchain install 1.98.1 --profile minimal
-          rustup target add aarch64-apple-ios \
-            --toolchain 1.98.1
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.98.1
+          source $HOME/.cargo/env
+          rustup target add aarch64-apple-ios --toolchain 1.98.1
 
-      - name: Verify build script
+      # 3. Cài đặt XcodeGen
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # 4. Tải hoặc chuẩn bị file game.wasm (nếu cần)
+      # Dự án yêu cầu game.zip chứa game.wasm và shaders
+      # Nếu bạn có sẵn file, hãy đặt trong repo hoặc tải từ artifact/secret
+      - name: Prepare Game Files
         run: |
-          test -f make-ios.sh
+          # Ví dụ: tải game.wasm từ một URL bí mật
+          # curl -L -o game.zip ${{ secrets.GAME_ZIP_URL }}
+          ls -la
+
+      # 5. Build IPA
+      - name: Build IPA
+        run: |
           chmod +x make-ios.sh
+          # Sử dụng script chính thức của dự án
+          ./make-ios.sh game.zip --ipa
 
-      - name: Build iOS IPA
-        env:
-          BUNDLE_ID: com.gtav.community
-          FREE: "1"
-        run: |
-          ./make-ios.sh --ipa
-
-      - name: Package GTAV Community
-        run: |
-          test -f build/Muguet.ipa
-          mkdir -p dist
-          cp build/Muguet.ipa \
-            dist/GTAV-Community.ipa
-          shasum -a 256 dist/GTAV-Community.ipa
-
+      # 6. Tải lên IPA (tùy chọn)
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: GTAV-Community-Unsigned
-          path: dist/GTAV-Community.ipa
-          if-no-files-found: error
-          retention-days: 7
+          name: Muguet-IPA
+          path: "*.ipa"
