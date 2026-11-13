@@ -1,0 +1,76 @@
+
+name: GTAV Community IPA Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/gtav-community.yml"
+      - "src/**"
+      - "ios/**"
+      - "launcher/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "tools/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gtav-community-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build GTAV Community IPA
+    runs-on: macos-26
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check Xcode
+        run: |
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Install dependencies
+        run: |
+          brew install xcodegen binaryen
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup target add aarch64-apple-ios \
+            --toolchain 1.98.1
+
+      - name: Verify build script
+        run: |
+          test -f make-ios.sh
+          chmod +x make-ios.sh
+
+      - name: Build iOS IPA
+        env:
+          BUNDLE_ID: com.gtav.community
+          FREE: "1"
+        run: |
+          ./make-ios.sh --ipa
+
+      - name: Package GTAV Community
+        run: |
+          test -f build/Muguet.ipa
+          mkdir -p dist
+          cp build/Muguet.ipa \
+            dist/GTAV-Community.ipa
+          shasum -a 256 dist/GTAV-Community.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTAV-Community-Unsigned
+          path: dist/GTAV-Community.ipa
+          if-no-files-found: error
+          retention-days: 7
