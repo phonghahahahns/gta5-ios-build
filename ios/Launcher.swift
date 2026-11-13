@@ -1,4 +1,4 @@
-// muguet - Launcher.swift
+// GTAV COMMUNITY - Launcher.swift
 // Constantin Clerc (c22dev) - 0.1
 
 import SwiftUI
@@ -506,7 +506,7 @@ let HUD_BUTTON_DEFS: [HUDButtonDef] = [
     HUDButtonDef(id: 6, name: "COVER (Núp / Radio)", label: "COVER", anchorType: .topRight, baseOffset: CGPoint(x: 84, y: 30), baseRadius: 22),
     HUDButtonDef(id: 7, name: "CROUCH (Ngồi / Nhìn sau)", label: "CROUCH", anchorType: .topRight, baseOffset: CGPoint(x: 138, y: 30), baseRadius: 22),
     HUDButtonDef(id: 8, name: "CAM (Góc camera)", label: "CAM", anchorType: .topRight, baseOffset: CGPoint(x: 192, y: 30), baseRadius: 22),
-    HUDButtonDef(id: 9, name: "MENU (Muguet Menu)", label: "MENU", anchorType: .topRight, baseOffset: CGPoint(x: 246, y: 30), baseRadius: 22),
+    HUDButtonDef(id: 9, name: "MENU (GTAV COMMUNITY Menu)", label: "MENU", anchorType: .topRight, baseOffset: CGPoint(x: 246, y: 30), baseRadius: 22),
     HUDButtonDef(id: 10, name: "PAUSE (Tạm dừng)", label: "PAUSE", anchorType: .topLeft, baseOffset: CGPoint(x: 30, y: 30), baseRadius: 22),
     HUDButtonDef(id: 11, name: "PHONE (Điện thoại)", label: "PHONE", anchorType: .topLeft, baseOffset: CGPoint(x: 84, y: 30), baseRadius: 22),
     HUDButtonDef(id: 12, name: "MENU KEYS (Phím mũi tên)", label: "MENU\nKEYS", anchorType: .topLeft, baseOffset: CGPoint(x: 138, y: 30), baseRadius: 22),
@@ -971,9 +971,14 @@ struct LauncherView: View {
     let play: () -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
+        GeometryReader { proxy in
+            let isCompact = proxy.size.width < 700
+            let layout = isCompact
+                ? AnyLayout(VStackLayout(spacing: 0))
+                : AnyLayout(HStackLayout(spacing: 0))
+            layout {
             VStack(spacing: 16) {
-                Text(isOverlay ? "Muguet Menu" : "Muguet").font(.largeTitle.weight(.bold))
+                Text(isOverlay ? "GTAV COMMUNITY" : "GTAV COMMUNITY").font(.largeTitle.weight(.bold))
                 if !muguet_has_game_code() {
                     Text("This build has no game code: build it with ./make-ios.sh <game.zip>.")
                         .foregroundStyle(.red).font(.callout).multilineTextAlignment(.center)
@@ -998,11 +1003,33 @@ struct LauncherView: View {
                     playButton
                     Button("Import other game data…") { picking = true }.font(.caption)
                 }
-                Text("proudly made by c22dev").font(.caption).foregroundStyle(.secondary)
-                Text("Rebuild: iOSVN").font(.caption).foregroundStyle(.secondary)
+                Text("GTAV COMMUNITY • iOS GAME LAUNCHER")
+                    .font(.caption2.weight(.bold))
+                    .tracking(1.4)
+                    .foregroundStyle(.cyan.opacity(0.9))
+                Link(destination: URL(string: "https://t.me/moichuyendantehon")!) {
+                    Label("@moichuyendantehon", systemImage: "paperplane.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.28), in: Capsule())
+                        .overlay(Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1))
+                }
+                Text("GTAV COMMUNITY • Telegram: @moichuyendantehon")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            .padding(24)
+            .padding(isCompact ? 18 : 24)
             .frame(maxWidth: .infinity)
+            .frame(maxHeight: isCompact ? 270 : .infinity)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.08, green: 0.12, blue: 0.22), Color(red: 0.035, green: 0.045, blue: 0.08)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             Form {
                 Section("Tên nhân vật / Người chơi") {
                     HStack {
@@ -1443,17 +1470,19 @@ struct LauncherView: View {
 
                 Section("Save Data") {
                     Button("Share / Backup saves") { shareSaves() }
-                    Text("In game: save via Phone > Quick Save, or Pause > Game > Save Game. Saves are stored in Files app > On My iPhone > Muguet > saves.")
+                    Text("In game: save via Phone > Quick Save, or Pause > Game > Save Game. Saves are stored in Files app > On My iPhone > GTAV COMMUNITY > saves.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Diagnostics") {
                     Button("Share startup / memory logs") { shareDiagnostics() }
-                    Text("After a crash, reopen Muguet and share the previous log. Logs contain connection addresses and runtime errors, not game files.")
+                    Text("After a crash, reopen GTAV COMMUNITY and share the previous log. Logs contain connection addresses and runtime errors, not game files.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity)
+            }
         }
+        .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .fileImporter(isPresented: $picking, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result { importer.run(url) }
@@ -1618,7 +1647,7 @@ public func muguetOpenMenu() {
         var presenter = root
         while let child = presenter.presentedViewController { presenter = child }
 
-        let alert = UIAlertController(title: "Muguet Menu", message: nil, preferredStyle: .alert)
+        let alert = UIAlertController(title: "GTAV COMMUNITY", message: nil, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Tiếp tục chơi", style: .cancel))
 
         alert.addAction(UIAlertAction(title: "Chỉnh vị trí & kích thước nút (HUD)", style: .default, handler: { _ in
