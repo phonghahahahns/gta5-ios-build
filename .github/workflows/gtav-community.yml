@@ -1,52 +1,64 @@
 name: Build GTAV Community IPA
-on: workflow_dispatch
+
+on:
+  workflow_dispatch: # Cho phép chạy thủ công từ tab Actions
 
 jobs:
   build:
-    # Bắt buộc: macOS 14+ trên Apple Silicon (runner mặc định có thể là Intel)
-    runs-on: macos-14
+    # SỬA LỖI 1: macos-14 đã bị khai tử, chuyển sang macos-15 (hỗ trợ Apple Silicon/ARM64)
+    runs-on: macos-15
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      # 1. Chọn đúng phiên bản Xcode (dự án yêu cầu 26+)
-      - name: Select Xcode
+      - name: Select Xcode 16+ (hoặc 26+)
         run: |
-          # Liệt kê các Xcode có sẵn trên runner
+          # Liệt kê các Xcode có sẵn (để debug nếu cần)
           ls /Applications | grep Xcode
-          # Chọn Xcode 26 nếu có (tên có thể là Xcode_26.0.app hoặc Xcode_26.1.app)
-          sudo xcode-select -s /Applications/Xcode_26.0.app  # Điều chỉnh theo tên thực tế
+          
+          # Chọn Xcode mới nhất có sẵn trên runner macos-15
+          # Nếu dự án bắt buộc Xcode 26, bạn có thể chỉ định cụ thể: sudo xcode-select -s /Applications/Xcode_26.0.app
+          sudo xcode-select -s /Applications/Xcode.app
           xcodebuild -version
 
-      # 2. Cài đặt Rust toolchain 1.98.1 với target iOS
-      - name: Install Rust
+      - name: Install Rust Toolchain 1.98.1
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.98.1
           source $HOME/.cargo/env
+          
+          # SỬA LỖI 2 (Phần 1): Thêm target iOS cho Rust
           rustup target add aarch64-apple-ios --toolchain 1.98.1
 
-      # 3. Cài đặt XcodeGen
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          # Công cụ bắt buộc để tạo project Xcode từ file project.yml
+          brew install xcodegen
 
-      # 4. Tải hoặc chuẩn bị file game.wasm (nếu cần)
-      # Dự án yêu cầu game.zip chứa game.wasm và shaders
-      # Nếu bạn có sẵn file, hãy đặt trong repo hoặc tải từ artifact/secret
       - name: Prepare Game Files
         run: |
-          # Ví dụ: tải game.wasm từ một URL bí mật
-          # curl -L -o game.zip ${{ secrets.GAME_ZIP_URL }}
-          ls -la
+          # LƯU Ý: Bạn cần có file game.zip trong repo hoặc tải nó về ở bước này.
+          # Nếu bạn đã commit file game.zip vào repo, bước này không cần làm gì cả.
+          # Nếu chưa, hãy bỏ comment dòng dưới và thay bằng link tải thực tế của bạn:
+          # curl -L -o game.zip "https://link-tai-game-cua-ban.com/game.zip"
+          
+          if [ ! -f game.zip ]; then
+            echo "CẢNH BÁO: Không tìm thấy game.zip. Quá trình build có thể thất bại nếu script yêu cầu file này."
+          fi
 
-      # 5. Build IPA
       - name: Build IPA
         run: |
+          # Cấp quyền thực thi cho script
           chmod +x make-ios.sh
-          # Sử dụng script chính thức của dự án
+          
+          # SỬA LỖI 2 (Phần 2): Chạy script build chính thức của dự án Muguet
+          # Script này sẽ tự động gọi cargo build (Rust) và xcodebuild
           ./make-ios.sh game.zip --ipa
-
-      # 6. Tải lên IPA (tùy chọn)
-      - name: Upload IPA
+          
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Muguet-IPA
+          name: Muguet-GTAV-IPA
+          # Tìm và tải lên tất cả các file .ipa được tạo ra
           path: "*.ipa"
+          if-no-files-found: error
